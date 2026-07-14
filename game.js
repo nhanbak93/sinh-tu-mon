@@ -70,7 +70,7 @@ canvas.addEventListener("click", function(event){
         if(
             mouseX >= deleteButtonX &&
             mouseX <= deleteButtonX + 50 &&
-            mouseY >= deleteButtonY - 20 &&
+            mouseY >= deleteButtonY - 30 &&
             mouseY <= deleteButtonY + 20
         ){
             let refund = 5
@@ -100,7 +100,7 @@ canvas.addEventListener("click", function(event){
         if(
             mouseX >= upgradeButtonX &&
             mouseX <= upgradeButtonX + 70 &&
-            mouseY >= upgradeButtonY - 20 &&
+            mouseY >= upgradeButtonY - 30 &&
             mouseY <= upgradeButtonY + 20
         ){
             let tower = selectedTowerToDelete;
@@ -951,9 +951,9 @@ function gameLoop(){
         ctx.fillText("GAME OVER", 430, 350);
         return;
     }
-    if(!gameOver && Date.now() - lastSpawn > spawnDelay){
+    if(!gameOver && Date.now() - lastSpawn >= spawnDelay){
         spawnMonster();
-        lastSpawn = Date.now();
+        lastSpawn += spawnDelay;
     }
     moveMonsters();
     towerShoot();
@@ -1001,22 +1001,22 @@ function gameLoop(){
             refund += (i * 20) / 2;
         }
         ctx.fillStyle = "red";
-        ctx.fillRect(deleteButtonX, deleteButtonY - 20, 50, 40);
+        ctx.fillRect(deleteButtonX, deleteButtonY - 30, 50, 50);
         ctx.fillStyle = "white";
         ctx.textAlign = "center";
         ctx.font = "14px Arial";
-        ctx.fillText("Bán", deleteButtonX + 24, deleteButtonY);
+        ctx.fillText("Bán", deleteButtonX + 24, deleteButtonY - 7);
         ctx.font = "12px Arial";
-        ctx.fillText(refund + " vàng", deleteButtonX + 24, deleteButtonY + 14);
+        ctx.fillText(refund + " vàng", deleteButtonX + 24, deleteButtonY + 7);
 
         let upgradeCost = selectedTowerToDelete.level < 5 ? selectedTowerToDelete.level * 20 : 0;
         ctx.fillStyle = "orange";
-        ctx.fillRect(upgradeButtonX, upgradeButtonY - 20, 70, 40);
+        ctx.fillRect(upgradeButtonX, upgradeButtonY - 30, 70, 50);
         ctx.fillStyle = "black";
         ctx.textAlign = "center";
-        ctx.fillText("Nâng Cấp", upgradeButtonX + 34, upgradeButtonY);
+        ctx.fillText("Nâng Cấp", upgradeButtonX + 34, upgradeButtonY - 7);
         ctx.font = "12px Arial";
-        ctx.fillText(selectedTowerToDelete.level < 5 ? upgradeCost + " vàng" : "MAX", upgradeButtonX + 34, upgradeButtonY + 14);
+        ctx.fillText(selectedTowerToDelete.level < 5 ? upgradeCost + " vàng" : "MAX", upgradeButtonX + 34, upgradeButtonY + 7);
 
         ctx.textAlign = "left";
 
