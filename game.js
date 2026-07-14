@@ -70,9 +70,14 @@ canvas.addEventListener("click", function(event){
         if(
             mouseX >= deleteButtonX &&
             mouseX <= deleteButtonX + 50 &&
-            mouseY >= deleteButtonY &&
+            mouseY >= deleteButtonY - 20 &&
             mouseY <= deleteButtonY + 20
         ){
+            let refund = 5
+            for (let i = 1; i < selectedTowerToDelete.level; i++) {
+                refund += (i * 20) / 2;
+            }
+            money += refund;
             grid[selectedTowerToDelete.row][selectedTowerToDelete.col] = 0;
             let index = towers.indexOf(selectedTowerToDelete);
             if(index !== -1){
@@ -95,7 +100,7 @@ canvas.addEventListener("click", function(event){
         if(
             mouseX >= upgradeButtonX &&
             mouseX <= upgradeButtonX + 70 &&
-            mouseY >= upgradeButtonY &&
+            mouseY >= upgradeButtonY - 20 &&
             mouseY <= upgradeButtonY + 20
         ){
             let tower = selectedTowerToDelete;
@@ -989,17 +994,32 @@ function gameLoop(){
         ctx.closePath();
         // Tránh lineWidth làm ảnh hưởng các hình vẽ phía sau
         ctx.lineWidth = 1;
-        // ===== NÚT XÓA =====
-        ctx.fillStyle = "red";
-        ctx.fillRect(deleteButtonX, deleteButtonY, 50, 20);
-        ctx.fillStyle = "white";
-        ctx.font = "14px Arial";
-        ctx.fillText("Xóa", deleteButtonX + 8, deleteButtonY + 15);
 
+        // ===== NÚT XÓA =====
+        let refund = 5;
+        for (let i = 1; i < selectedTowerToDelete.level; i++) {
+            refund += (i * 20) / 2;
+        }
+        ctx.fillStyle = "red";
+        ctx.fillRect(deleteButtonX, deleteButtonY - 20, 50, 40);
+        ctx.fillStyle = "white";
+        ctx.textAlign = "center";
+        ctx.font = "14px Arial";
+        ctx.fillText("Bán", deleteButtonX + 24, deleteButtonY);
+        ctx.font = "12px Arial";
+        ctx.fillText(refund + " vàng", deleteButtonX + 24, deleteButtonY + 14);
+
+        let upgradeCost = selectedTowerToDelete.level < 5 ? selectedTowerToDelete.level * 20 : 0;
         ctx.fillStyle = "orange";
-        ctx.fillRect(upgradeButtonX, upgradeButtonY, 70, 20);
+        ctx.fillRect(upgradeButtonX, upgradeButtonY - 20, 70, 40);
         ctx.fillStyle = "black";
-        ctx.fillText("Nâng Cấp", upgradeButtonX + 5, upgradeButtonY + 15);
+        ctx.textAlign = "center";
+        ctx.fillText("Nâng Cấp", upgradeButtonX + 34, upgradeButtonY);
+        ctx.font = "12px Arial";
+        ctx.fillText(selectedTowerToDelete.level < 5 ? upgradeCost + " vàng" : "MAX", upgradeButtonX + 34, upgradeButtonY + 14);
+
+        ctx.textAlign = "left";
+
 
         // ===== HIỆN CHỈ SỐ THÁP =====
         let lv = selectedTowerToDelete.level;
@@ -1127,3 +1147,12 @@ function gameLoop(){
 
 prepareNextMonsters();
 gameLoop();
+
+const fullscreenBtn = document.getElementById("fullscreenBtn");
+fullscreenBtn.addEventListener("click", async () => {
+    if (!document.fullscreenElement) {
+        await document.documentElement.requestFullscreen();
+    } else {
+        await document.exitFullscreen();
+    }
+});
