@@ -1,11 +1,22 @@
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
-
-const CELL_SIZE = 60;
+const gameWrapper = document.getElementById("gameWrapper");
+const GAME_WIDTH = 1280;
+const GAME_HEIGHT = 700;
 const GRID_SIZE = 10;
-
+const CELL_SIZE = 60;
 const START_X = 300;
 const START_Y = 50;
+function resizeGame() {
+    const scaleX = window.innerWidth / GAME_WIDTH;
+    const scaleY = window.innerHeight / GAME_HEIGHT;
+    // Lấy tỉ lệ nhỏ hơn để toàn bộ game nằm vừa màn hình
+    const scale = Math.min(scaleX, scaleY);
+    gameWrapper.style.transform = `scale(${scale})`;
+}
+resizeGame();
+window.addEventListener("resize", resizeGame);
+window.addEventListener("orientationchange", resizeGame);
 
 function drawGrid(){
     for(let row=0; row<GRID_SIZE; row++){
