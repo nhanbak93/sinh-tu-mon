@@ -556,7 +556,7 @@ function drawNextMonsters(timeLeft) {
     ctx.fillText(timeLeft + "s", START_X + 18, START_Y + 38);
 }
 
-function moveMonsters() {
+function moveMonsters(deltaTime) {
     for (let i = monsters.length - 1; i >= 0; i--) {
         let monster = monsters[i];
         if (monster.kind === "fly" || monster.kind === "bigFly") {
@@ -565,6 +565,7 @@ function moveMonsters() {
             let dx = endX - monster.x;
             let dy = endY - monster.y;
             let distance = Math.sqrt(dx * dx + dy * dy);
+            let moveSpeed = monster.speed * deltaTime;
             if (distance < monster.speed) {
                 monsters.splice(i, 1);
                 mauNha -= 1;
@@ -573,8 +574,8 @@ function moveMonsters() {
                 }
                 continue;
             }
-            monster.x += dx / distance * monster.speed;
-            monster.y += dy / distance * monster.speed;
+            monster.x += dx / distance * moveSpeed;
+            monster.y += dy / distance * moveSpeed;
             continue;
         }
         if (monster.slowUntil > Date.now()) {
@@ -595,13 +596,14 @@ function moveMonsters() {
         let dx = targetX - monster.x;
         let dy = targetY - monster.y;
         let distance = Math.sqrt(dx * dx + dy * dy);
-        if (distance < monster.speed) {
+        let moveSpeed = monster.speed * deltaTime;
+        if (distance < moveSpeed) {
             monster.x = targetX;
             monster.y = targetY;
             monster.pathIndex++;
         } else {
-            monster.x += dx / distance * monster.speed;
-            monster.y += dy / distance * monster.speed;
+            monster.x += dx / distance * moveSpeed;
+            monster.y += dy / distance * moveSpeed;
         }
     }
 }
@@ -942,7 +944,11 @@ function drawBullets(){
     }
 }
 
-function gameLoop(){
+let lastFrameTime = performance.now();
+function gameLoop(currentTime) {
+    let deltaTime = (currentTime - lastFrameTime) / 16.6667;
+    lastFrameTime = currentTime;
+    deltaTime = Math.min(deltaTime, 2);
     ctx.fillStyle = "rgb(30,30,30)";
     ctx.fillRect(0,0,canvas.width,canvas.height);
     if(gameOver){
@@ -955,7 +961,7 @@ function gameLoop(){
         spawnMonster();
         lastSpawn += spawnDelay;
     }
-    moveMonsters();
+    moveMonsters(deltaTime);
     towerShoot();
     moveBullets();
     let timeLeft = Math.ceil((spawnDelay - (Date.now() - lastSpawn)) / 1000);
@@ -1146,7 +1152,7 @@ function gameLoop(){
 }
 
 prepareNextMonsters();
-gameLoop();
+requestAnimationFrame(gameLoop);
 
 const fullscreenBtn = document.getElementById("fullscreenBtn");
 fullscreenBtn.addEventListener("click", async () => {
