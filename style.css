@@ -12,8 +12,8 @@ body {
 
 body {
     display: flex;
-    justify-content: center;
-    align-items: center;
+    justify-content: flex-start;
+    align-items: flex-start;
 }
 
 #gameWrapper {
@@ -22,7 +22,7 @@ body {
     width: 1280px;
     height: 700px;
 
-    transform-origin: center center;
+    transform-origin: top left;
 }
 
 canvas {
