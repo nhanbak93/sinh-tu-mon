@@ -61,6 +61,28 @@ let nextMonsters = [];
 let lastSpawnTime = Date.now();
 let spawnDelay = 6000;
 let lastMonsterType = null;
+let wakeLock = null;
+
+async function keepScreenOn() {
+    if (!("wakeLock" in navigator)) return;
+    try {
+        if (wakeLock === null) {
+            wakeLock = await navigator.wakeLock.request("screen");
+
+            wakeLock.addEventListener("release", () => {
+                wakeLock = null;
+            });
+        }
+    } catch (error) {
+        console.log("Không giữ được màn hình sáng:", error);
+    }
+}
+async function releaseScreenLock() {
+    if (wakeLock !== null) {
+        await wakeLock.release();
+        wakeLock = null;
+    }
+}
 
 canvas.addEventListener("click", function(event){
     const rect = canvas.getBoundingClientRect();
@@ -571,6 +593,7 @@ function moveMonsters(deltaTime) {
                 mauNha -= 1;
                 if (mauNha <= 0) {
                     gameOver = true;
+                    releaseScreenLock();
                 }
                 continue;
             }
@@ -1178,6 +1201,19 @@ function gameLoop(currentTime) {
 
 prepareNextMonsters();
 requestAnimationFrame(gameLoop);
+
+document.addEventListener("pointerdown", () => {
+    if (!gameOver) {
+        keepScreenOn();
+    }
+}, { once: true });
+document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible" && !gameOver) {
+        keepScreenOn();
+        lastFrameTime = performance.now();
+        lastSpawn = Date.now();
+    }
+});
 
 const fullscreenBtn = document.getElementById("fullscreenBtn");
 fullscreenBtn.addEventListener("click", async () => {
