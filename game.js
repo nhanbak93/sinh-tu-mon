@@ -321,12 +321,12 @@ function spawnMonster() {
             }, i * 700);
         }
     } else if (kind === "bigFly") {
-        let rate = 1.030 - Math.floor((wave - 1) / 100) * 0.005;
-        rate = Math.max(rate, 1.005); // không cho nhỏ hơn 1.000
+        let rate = 1.030 - Math.floor((wave - 1) / 100) * 0.010;
+        rate = Math.max(rate, 1.003); // không cho nhỏ hơn 1.000
         let growth = 1;
         for (let i = 1; i < wave; i++) {
-            let r = 1.030 - Math.floor((i - 1) / 100) * 0.005;
-            r = Math.max(r, 1.005);
+            let r = 1.030 - Math.floor((i - 1) / 100) * 0.010;
+            r = Math.max(r, 1.003);
             growth *= r;
         }
         let hp = Math.floor(200 * growth);
