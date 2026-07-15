@@ -306,14 +306,30 @@ function prepareNextMonsters() {
 function spawnMonster() {
     let kind = nextMonsters.shift();
     if (kind === "fly") {
-        let hp = Math.floor(80 * Math.pow(1.012, wave - 1));
+        let rate = 1.020 - Math.floor((wave - 1) / 100) * 0.005;
+        rate = Math.max(rate, 1.005); // không cho nhỏ hơn 1.000
+        let growth = 1;
+        for (let i = 1; i < wave; i++) {
+            let r = 1.020 - Math.floor((i - 1) / 100) * 0.005;
+            r = Math.max(r, 1.005);
+            growth *= r;
+        }
+        let hp = Math.floor(80 * growth);
         for (let i = 0; i < 5; i++) {
             setTimeout(function () {
                 spawnOneMonster(hp, 1.5, "blue", 16, "fly");
             }, i * 700);
         }
     } else if (kind === "bigFly") {
-        let hp = Math.floor(180 * Math.pow(1.018, wave - 1));
+        let rate = 1.030 - Math.floor((wave - 1) / 100) * 0.005;
+        rate = Math.max(rate, 1.005); // không cho nhỏ hơn 1.000
+        let growth = 1;
+        for (let i = 1; i < wave; i++) {
+            let r = 1.030 - Math.floor((i - 1) / 100) * 0.005;
+            r = Math.max(r, 1.005);
+            growth *= r;
+        }
+        let hp = Math.floor(200 * growth);
         for (let i = 0; i < 2; i++) {
             setTimeout(function () {
                 spawnOneMonster(hp, 1.5, "purple", 24, "bigFly");
