@@ -64,18 +64,21 @@ let lastMonsterType = null;
 let wakeLock = null;
 
 async function keepScreenOn() {
-    if (!("wakeLock" in navigator)) return;
-    try {
-        if (wakeLock === null) {
-            wakeLock = await navigator.wakeLock.request("screen");
-
-            wakeLock.addEventListener("release", () => {
-                wakeLock = null;
-            });
-        }
-    } catch (error) {
-        console.log("Không giữ được màn hình sáng:", error);
+    if (!("wakeLock" in navigator)) {
+        alert("trình duyệt ko giữ sáng màng hình. hãy mở bằng google chrome");
+        return;
     }
+    try {
+        wakeLock = await navigator.wakeLock.request("screen");
+        console.log("bật giữ màng hình sáng");
+        wakeLock.addEventListener("release", () => {
+            console.log("tắt giữ màng hình sáng");
+            wakeLock = null;
+            });
+        } catch (error) {
+            alert("ko bật đc giữ màng hình sáng: " + error.message);
+            console.log(error);
+        }
 }
 async function releaseScreenLock() {
     if (wakeLock !== null) {
@@ -610,6 +613,7 @@ function moveMonsters(deltaTime) {
             mauNha -= 1;
             if (mauNha <= 0) {
                 gameOver = true;
+                releaseScreenLock();
             }
             continue;
         }
@@ -1203,15 +1207,15 @@ prepareNextMonsters();
 requestAnimationFrame(gameLoop);
 
 document.addEventListener("pointerdown", () => {
-    if (!gameOver) {
+    if (!gameOver && wakeLock === null) {
         keepScreenOn();
     }
-}, { once: true });
+});
 document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "visible" && !gameOver) {
+    if (document.visibilityState === "visible" && !gameOver && wakeLock === null) {
         keepScreenOn();
         lastFrameTime = performance.now();
-        lastSpawn = Date.now();
+        lastSpawnTime = Date.now();
     }
 });
 
