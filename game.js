@@ -999,12 +999,6 @@ function gameLoop(currentTime) {
     deltaTime = Math.min(deltaTime, 2);
     ctx.fillStyle = "rgb(30,30,30)";
     ctx.fillRect(0,0,canvas.width,canvas.height);
-    if(gameOver){
-        ctx.fillStyle = "red";
-        ctx.font = "70px Arial";
-        ctx.fillText("GAME OVER", 430, 350);
-        return;
-    }
     if(!gameOver && Date.now() - lastSpawn >= spawnDelay){
         spawnMonster();
         lastSpawn += spawnDelay;
@@ -1212,10 +1206,16 @@ document.addEventListener("pointerdown", () => {
     }
 });
 document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "visible" && !gameOver && wakeLock === null) {
-        keepScreenOn();
+    if (document.hidden && ! gameOver) {
+        gameOver = true;
+        releaseScreenLock();
+        return;
+    }
+    if (document.visibilityState === "visible") {
         lastFrameTime = performance.now();
         lastSpawnTime = Date.now();
+        
+requestAnimationFrame(gameLoop);
     }
 });
 
