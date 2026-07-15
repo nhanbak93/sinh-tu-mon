@@ -608,6 +608,27 @@ function moveMonsters(deltaTime) {
     }
 }
 
+function drawGameOver() {
+    if (!gameOver) return;
+    // Nền đen mờ phủ toàn màn hình game
+    ctx.fillStyle = "rgba(0, 0, 0, 0.75)";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.textAlign = "center";
+    ctx.fillStyle = "red";
+    ctx.font = "bold 55px Arial";
+    ctx.fillText("GAME OVER", canvas.width / 2, canvas.height / 2 - 60);
+    ctx.fillStyle = "white";
+    ctx.font = "bold 30px Arial";
+    ctx.fillText(
+        `Bạn đã vượt qua vòng ${wave}`,
+        canvas.width / 2,
+        canvas.height / 2
+    );
+    // Hiện nút chơi lại
+    const restartBtn = document.getElementById("restartBtn");
+    restartBtn.style.display = "block";
+}
+
 function drawTowers(){
     for(let tower of towers){
         let x = START_X + tower.col * CELL_SIZE;
@@ -1148,6 +1169,10 @@ function gameLoop(currentTime) {
     ctx.fillText("Tiền: " + money, 20, 50);
     ctx.fillText("Máu: " + mauNha, 20, 90);
     ctx.fillText("Vòng: " + wave, 20, 130);
+    if (gameOver) {
+        drawGameOver();
+        return;
+    }
     requestAnimationFrame(gameLoop);
 }
 
@@ -1161,4 +1186,9 @@ fullscreenBtn.addEventListener("click", async () => {
     } else {
         await document.exitFullscreen();
     }
+});
+
+const restartBtn = document.getElementById("restartBtn");
+restartBtn.addEventListener("click", function () {
+    location.reload();
 });
