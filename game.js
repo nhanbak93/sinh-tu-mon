@@ -7,6 +7,8 @@ const GRID_SIZE = 10;
 const CELL_SIZE = 60;
 const START_X = 300;
 const START_Y = 50;
+const MAGIC_COOLDOWN = 100;
+const DAMAGE_MAGIC_COOLDOWN = 100;
 function resizeGame() {
     const scaleX = window.innerWidth / GAME_WIDTH;
     const scaleY = window.innerHeight / GAME_HEIGHT;
@@ -44,6 +46,8 @@ function drawGrid(){
     );
 }
 
+let magicCooldown = 0;
+let damageMagicCooldown = 0;
 let money = 50;
 let mauNha = 10;
 let wave = 1;
@@ -62,6 +66,43 @@ let lastSpawnTime = Date.now();
 let spawnDelay = 6000;
 let lastMonsterType = null;
 let wakeLock = null;
+
+let audioCtx = null;
+let soundEnabled = true;
+function getAudioContext() {
+    if (!audioCtx) {
+        audioCtx = new (
+            window.AudioContext ||
+            window.webkitAudioContext
+        )();
+    }
+    if (audioCtx.state === "suspended") {
+        audioCtx.resume();
+    }
+    return audioCtx;
+}
+
+function playShootSound() {
+    if (!soundEnabled) return;
+    const ctx = getAudioContext();
+    const oscillator = ctx.createOscillator();
+    const gain = ctx.createGain();
+    oscillator.type = "square";
+    oscillator.frequency.setValueAtTime(500, ctx.currentTime);
+    oscillator.frequency.exponentialRampToValueAtTime(
+        180,
+        ctx.currentTime + 0.08
+    );
+    gain.gain.setValueAtTime(0.08, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(
+        0.001,
+        ctx.currentTime + 0.08
+    );
+    oscillator.connect(gain);
+    gain.connect(ctx.destination);
+    oscillator.start();
+    oscillator.stop(ctx.currentTime + 0.08);
+}
 
 async function keepScreenOn() {
     if (!("wakeLock" in navigator)) {
@@ -91,6 +132,7 @@ canvas.addEventListener("click", function(event){
     const rect = canvas.getBoundingClientRect();
     const mouseX = (event.clientX - rect.left) * (canvas.width / rect.width);
     const mouseY = (event.clientY - rect.top) * (canvas.height / rect.height);
+    // Bấm nút xoá và nâng cấp
     if(selectedTowerToDelete){
         if(
             mouseX >= deleteButtonX &&
@@ -132,7 +174,7 @@ canvas.addEventListener("click", function(event){
             if(tower.level >= 5){
                 return;
             }
-            let cost = tower.level * 15;
+            let cost = tower.level * 20;
 
             if(money >= cost){
                 money -= cost;
@@ -142,6 +184,7 @@ canvas.addEventListener("click", function(event){
         }
     }
     
+    // Bấm nút tháp
     let clickedTower = false;
     for(let tower of towers){
         let tx = START_X + tower.col * CELL_SIZE;
@@ -187,6 +230,22 @@ canvas.addEventListener("click", function(event){
         selectedTower = "energy";
         return;
     }
+    if(mouseX >= 950 && mouseX <= 1000 && mouseY >= 500 && mouseY <= 550){
+        selectedTower = "magic";
+        if (magicCooldown <= 0) {
+            resetAllMonstersToStart();
+            magicCooldown = MAGIC_COOLDOWN;
+        }
+        return;
+    }
+    if(mouseX >= 950 && mouseX <= 1000 && mouseY >= 570 && mouseY <= 620){
+        selectedTower = "damageMagic";
+        if (damageMagicCooldown <= 0) {
+            damageAllMonsters();
+            damageMagicCooldown = DAMAGE_MAGIC_COOLDOWN;
+        }
+        return;
+    }
     const col = Math.floor((mouseX - START_X) / CELL_SIZE);
     const row = Math.floor((mouseY - START_Y) / CELL_SIZE);
     if(row >= 0 && row < GRID_SIZE && col >= 0 && col < GRID_SIZE){
@@ -220,6 +279,45 @@ canvas.addEventListener("click", function(event){
         }
     }
 });
+
+function resetAllMonstersToStart() {
+    let i = 0;
+    for (let monster of monsters) {
+        monster.path = findPath(0, 0);
+        monster.pathIndex = 1;
+        monster.x = START_X + CELL_SIZE / 2;
+        monster.y = START_Y + CELL_SIZE / 2 + i * 3;
+        i++;
+    }
+}
+
+function damageAllMonsters() {
+    for (let monster of monsters) {
+        const percentDamage = monster.hp * 0.35;
+        const totalDamage = percentDamage + 2000;
+        monster.hp -= totalDamage;
+        if (monster.hp < 0){
+            monster.hp = 0;
+        }
+    }
+    for(let j = monsters.length - 1; j >= 0; j--){
+        if(monsters[j].hp <= 0){
+            if (monsters[j].kind === "split" || monsters[j].kind === "splitBig"){
+                splitMonster(monsters[j]);
+            }
+            if(monsters[j].kind === "bigBlue"){
+                money += 15;
+            }else  if(monsters[j].color === "purple"){
+                money += 7;
+            }else if(monsters[j].kind === "blue"){
+                money += 4;
+            }else{
+                money += 2;
+            }
+            monsters.splice(j, 1);
+        }
+    }
+}
 
 function findPath(startRow = 0, startCol = 0) {
     let queue = [{ row: startRow, col: startCol, path: [{ row: startRow, col: startCol }] }];
@@ -307,11 +405,11 @@ function spawnMonster() {
     let kind = nextMonsters.shift();
     if (kind === "fly") {
         let rate = 1.020 - Math.floor((wave - 1) / 100) * 0.005;
-        rate = Math.max(rate, 1.005); // không cho nhỏ hơn 1.000
+        rate = Math.max(rate, 1.002);
         let growth = 1;
         for (let i = 1; i < wave; i++) {
             let r = 1.020 - Math.floor((i - 1) / 100) * 0.005;
-            r = Math.max(r, 1.005);
+            r = Math.max(r, 1.002);
             growth *= r;
         }
         let hp = Math.floor(80 * growth);
@@ -322,11 +420,11 @@ function spawnMonster() {
         }
     } else if (kind === "bigFly") {
         let rate = 1.030 - Math.floor((wave - 1) / 100) * 0.010;
-        rate = Math.max(rate, 1.003); // không cho nhỏ hơn 1.000
+        rate = Math.max(rate, 1.0032);
         let growth = 1;
         for (let i = 1; i < wave; i++) {
             let r = 1.030 - Math.floor((i - 1) / 100) * 0.010;
-            r = Math.max(r, 1.003);
+            r = Math.max(r, 1.0032);
             growth *= r;
         }
         let hp = Math.floor(200 * growth);
@@ -510,8 +608,13 @@ function drawNextMonsters(timeLeft) {
         let x = START_X + 15 + i * 45;
         let y = START_Y - 45;
         let kind = nextMonsters[i];
-        ctx.strokeStyle = "white";
-        ctx.lineWidth = 2;
+        if (kind === "boss" || kind === "thoiBu" || kind === "splitBig" || kind === "bigBlue" || kind === "bigFly") {
+            ctx.strokeStyle = "red";
+            ctx.lineWidth = 4;
+        } else {
+            ctx.strokeStyle = "white";
+            ctx.lineWidth = 2;
+        }
         ctx.strokeRect(x, y, 35, 35);
         if (kind === "normal") {
             ctx.fillStyle = "white";
@@ -743,6 +846,7 @@ function drawTowerButtons(){
     ctx.fillStyle = "white";
     ctx.font = "24px Arial";
     ctx.fillText("Các Tháp", 950, 80);
+    ctx.fillText("Các Phép", 950, 480);
     // Tháp thường
     ctx.strokeStyle = "white";
     ctx.lineWidth = 2;
@@ -861,6 +965,90 @@ function drawTowerButtons(){
         ctx.fillText("theo % máu, làm chậm", 1045, 495);
         ctx.lineWidth = 1;
     }
+    // Nút phép
+    ctx.strokeStyle = "white";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(950, 500, 50, 50);
+    ctx.fillStyle = "purple";
+    ctx.beginPath();
+    ctx.arc(975, 525, 21, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = "yellow";
+    ctx.lineWidth = 6;
+    ctx.beginPath();
+    ctx.arc(975, 525, 11, 0, Math.PI * 2);
+    ctx.stroke();
+    if (magicCooldown > 0) {
+        ctx.fillStyle = "rgba(50,50,50,0.8)";
+        ctx.fillRect(963, 515, 24, 20);
+        ctx.fillStyle = "white";
+        ctx.font = "16px Arial";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(
+            Math.ceil(magicCooldown),
+            975,
+            525
+        );
+        ctx.textAlign = "start";
+        ctx.textBaseline = "alphabetic";
+    }
+    if (selectedTower === "magic") {
+        ctx.strokeStyle = "yellow";
+        ctx.lineWidth = 4;
+        ctx.strokeRect(947, 497, 56, 56);
+        ctx.fillStyle = "rgba(0,0,0,0.8)";
+        ctx.fillRect(1030, 495, 220, 80);
+        ctx.fillStyle = "white";
+        ctx.font = "18px Arial";
+        ctx.fillText("Đưa tất cả quái về vị trí", 1045, 525);
+        ctx.fillText("bắt đầu", 1045, 555);
+        ctx.lineWidth = 1;
+    }
+    // Nút phép sát thương
+    ctx.strokeStyle = "white";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(950, 570, 50, 50);
+    ctx.fillStyle =
+        damageMagicCooldown > 0 ? "#555" : "darkred";
+    ctx.fillRect(953, 573, 44, 44);
+    ctx.fillStyle = "yellow";
+    ctx.beginPath();
+    ctx.moveTo(978, 577);
+    ctx.lineTo(965, 597);
+    ctx.lineTo(974, 597);
+    ctx.lineTo(968, 615);
+    ctx.lineTo(989, 590);
+    ctx.lineTo(980, 590);
+    ctx.closePath();
+    ctx.fill();
+    if (damageMagicCooldown > 0) {
+        ctx.fillStyle = "rgba(50,50,50,0.8)";
+        ctx.fillRect(963, 585, 24, 20);
+        ctx.fillStyle = "white";
+        ctx.font = "16px Arial";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(
+            Math.ceil(damageMagicCooldown),
+            975,
+            595
+        );
+        ctx.textAlign = "start";
+        ctx.textBaseline = "alphabetic";
+    }
+    if (selectedTower === "damageMagic") {
+        ctx.strokeStyle = "yellow";
+        ctx.lineWidth = 4;
+        ctx.strokeRect(947, 567, 56, 56);
+        ctx.fillStyle = "rgba(0,0,0,0.8)";
+        ctx.fillRect(1030, 565, 220, 80);
+        ctx.fillStyle = "white";
+        ctx.font = "18px Arial";
+        ctx.fillText("Tất cả quái bị giảm 35%", 1045, 595);
+        ctx.fillText("máu và 2000 sát thương", 1045, 625);
+        ctx.lineWidth = 1;
+    }
 }
 
 let bullets = [];
@@ -931,6 +1119,7 @@ function towerShoot(){
                     type: tower.type,
                     level: tower.level
                 });
+                playShootSound();
                 tower.lastShot = now;
                     break;
             }
@@ -1013,6 +1202,19 @@ function gameLoop(currentTime) {
     let deltaTime = (currentTime - lastFrameTime) / 16.6667;
     lastFrameTime = currentTime;
     deltaTime = Math.min(deltaTime, 2);
+    // thời gian Hồi Phép
+    if (magicCooldown > 0) {
+        magicCooldown -= deltaTime / 60;
+        if (magicCooldown < 0) {
+            magicCooldown = 0;
+        }
+    }
+    if (damageMagicCooldown > 0) {
+        damageMagicCooldown -= deltaTime / 60;
+        if (damageMagicCooldown < 0) {
+            damageMagicCooldown = 0;
+        }
+    }
     ctx.fillStyle = "rgb(30,30,30)";
     ctx.fillRect(0,0,canvas.width,canvas.height);
     if(!gameOver && Date.now() - lastSpawn >= spawnDelay){
