@@ -68,13 +68,26 @@ let lastMonsterType = null;
 let wakeLock = null;
 
 let audioCtx = null;
+let masterGain = null;
+let compressor = null;
 let soundEnabled = true;
+
 function getAudioContext() {
     if (!audioCtx) {
         audioCtx = new (
             window.AudioContext ||
             window.webkitAudioContext
         )();
+        masterGain = audioCtx.createGain();
+        compressor = audioCtx.createDynamicsCompressor();
+        masterGain.gain.value = 0.9;
+        compressor.threshold.value = -20;
+        compressor.knee.value = 20;
+        compressor.ratio.value = 12;
+        compressor.attack.value = 0.003;
+        compressor.release.value = 0.18;
+        masterGain.connect(compressor);
+        compressor.connect(audioCtx.destination);
     }
     if (audioCtx.state === "suspended") {
         audioCtx.resume();
@@ -82,8 +95,13 @@ function getAudioContext() {
     return audioCtx;
 }
 
+// đạn bắn
+let shootSoundCount = 0;
+const MAX_SHOOT_SOUND = 3;
 function playShootSound() {
     if (!soundEnabled) return;
+    if (shootSoundCount >= MAX_SHOOT_SOUND) return;
+    shootSoundCount++;
     const ctx = getAudioContext();
     const oscillator = ctx.createOscillator();
     const gain = ctx.createGain();
@@ -93,15 +111,137 @@ function playShootSound() {
         180,
         ctx.currentTime + 0.08
     );
-    gain.gain.setValueAtTime(0.08, ctx.currentTime);
+    gain.gain.setValueAtTime(0.02, ctx.currentTime);
     gain.gain.exponentialRampToValueAtTime(
         0.001,
         ctx.currentTime + 0.08
     );
     oscillator.connect(gain);
-    gain.connect(ctx.destination);
+    gain.connect(masterGain);
     oscillator.start();
     oscillator.stop(ctx.currentTime + 0.08);
+    oscillator.onended = () => {
+        shootSoundCount--;
+    };
+}
+
+// quái chết
+let monterDieSoundCount = 0;
+const MAX_MONSTER_DIE_SOUND = 3;
+function playMonsterDieSound() {
+    if (!soundEnabled) return;
+    if (monterDieSoundCount >= MAX_MONSTER_DIE_SOUND) return;
+    monterDieSoundCount++;
+    const ctx = getAudioContext();
+    const oscillator = ctx.createOscillator();
+    const gain = ctx.createGain();
+    oscillator.type = "sawtooth";
+    oscillator.frequency.setValueAtTime(220, ctx.currentTime);
+    oscillator.frequency.exponentialRampToValueAtTime(
+        60,
+        ctx.currentTime + 0.18
+    );
+    gain.gain.setValueAtTime(0.04, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(
+        0.001,
+        ctx.currentTime + 0.18
+    );
+    oscillator.connect(gain);
+    gain.connect(masterGain);
+    oscillator.start();
+    oscillator.stop(ctx.currentTime + 0.18);
+    oscillator.onended = () => {
+        monterDieSoundCount--;
+    }
+}
+
+// đặt tháp thành công
+function playPlaceTowerSound() {
+    if (!soundEnabled) return;
+    const ctx = getAudioContext();
+    function heavyHit(time) {
+        // Âm trầm giống bước chân nặng
+        const lowOsc = ctx.createOscillator();
+        const lowGain = ctx.createGain();
+        lowOsc.type = "sine";
+        lowOsc.frequency.setValueAtTime(110, time);
+        lowOsc.frequency.exponentialRampToValueAtTime(
+            45,
+            time + 0.12
+        );
+        lowGain.gain.setValueAtTime(6.0, time);
+        lowGain.gain.exponentialRampToValueAtTime(
+            0.001,
+            time + 0.13
+        );
+        lowOsc.connect(lowGain);
+        lowGain.connect(masterGain);
+        lowOsc.start(time);
+        lowOsc.stop(time + 0.13);
+        const hitOsc = ctx.createOscillator();
+        const hitGain = ctx.createGain();
+        hitOsc.type = "square";
+        hitOsc.frequency.setValueAtTime(260, time);
+        hitOsc.frequency.exponentialRampToValueAtTime(
+            90,
+            time + 0.055
+        );
+        hitGain.gain.setValueAtTime(0.5, time);
+        hitGain.gain.exponentialRampToValueAtTime(
+            0.001,
+            time + 0.06
+        );
+        hitOsc.connect(hitGain);
+        hitGain.connect(masterGain);
+        hitOsc.start(time);
+        hitOsc.stop(time + 0.06);
+    }
+    heavyHit(ctx.currentTime);
+    heavyHit(ctx.currentTime + 0.10);
+}
+
+// phép quái về star
+function playSpellSound() {
+    if (!soundEnabled) return;
+
+    const ctx = getAudioContext();
+    const start = ctx.currentTime;
+
+    function magicSweep(time, startFreq, endFreq, volume) {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(startFreq, time);
+        osc.frequency.exponentialRampToValueAtTime(
+            endFreq,
+            time + 0.22
+        );
+        gain.gain.setValueAtTime(0.02, time);
+        gain.gain.exponentialRampToValueAtTime(
+            volume,
+            time + 0.015
+        );
+        gain.gain.exponentialRampToValueAtTime(
+            0.02,
+            time + 0.28
+        );
+        osc.connect(gain);
+        gain.connect(masterGain);
+        osc.start(time);
+        osc.stop(time + 0.28);
+    }
+
+    // Chéo thứ nhất
+    magicSweep(start, 280, 1100, 0.07);
+
+    // Chéo thứ hai
+    magicSweep(start + 0.13, 360, 1450, 0.065);
+
+    // Tiếng vọng 1
+    magicSweep(start + 0.32, 420, 1050, 0.025);
+
+    // Tiếng vọng 2 nhỏ hơn
+    magicSweep(start + 0.48, 500, 1250, 0.012);
 }
 
 async function keepScreenOn() {
@@ -235,6 +375,7 @@ canvas.addEventListener("click", function(event){
         if (magicCooldown <= 0) {
             resetAllMonstersToStart();
             magicCooldown = MAGIC_COOLDOWN;
+            playSpellSound();
         }
         return;
     }
@@ -260,6 +401,7 @@ canvas.addEventListener("click", function(event){
                 return;
             }
             money -= 10;
+            playPlaceTowerSound();
             towers.push({
                 row: row,
                 col: col,
@@ -1166,6 +1308,7 @@ function moveBullets(){
             bullets.splice(i, 1);
             for(let j = monsters.length - 1; j >= 0; j--){
                 if(monsters[j].hp <= 0){
+                    playMonsterDieSound();
                     if (monsters[j].kind === "split" || monsters[j].kind === "splitBig"){
                         splitMonster(monsters[j]);
                     }
