@@ -546,12 +546,12 @@ function prepareNextMonsters() {
 function spawnMonster() {
     let kind = nextMonsters.shift();
     if (kind === "fly") {
-        let rate = 1.020 - Math.floor((wave - 1) / 100) * 0.005;
-        rate = Math.max(rate, 1.002);
+        let rate = 1.030 - Math.floor((wave - 1) / 100) * 0.010;
+        rate = Math.max(rate, 1.0020);
         let growth = 1;
         for (let i = 1; i < wave; i++) {
-            let r = 1.020 - Math.floor((i - 1) / 100) * 0.005;
-            r = Math.max(r, 1.002);
+            let r = 1.030 - Math.floor((i - 1) / 100) * 0.010;
+            r = Math.max(r, 1.0020);
             growth *= r;
         }
         let hp = Math.floor(80 * growth);
@@ -561,12 +561,12 @@ function spawnMonster() {
             }, i * 700);
         }
     } else if (kind === "bigFly") {
-        let rate = 1.030 - Math.floor((wave - 1) / 100) * 0.010;
-        rate = Math.max(rate, 1.0032);
+        let rate = 1.035 - Math.floor((wave - 1) / 100) * 0.013;
+        rate = Math.max(rate, 1.0024);
         let growth = 1;
         for (let i = 1; i < wave; i++) {
-            let r = 1.030 - Math.floor((i - 1) / 100) * 0.010;
-            r = Math.max(r, 1.0032);
+            let r = 1.035 - Math.floor((i - 1) / 100) * 0.013;
+            r = Math.max(r, 1.0024);
             growth *= r;
         }
         let hp = Math.floor(200 * growth);
@@ -576,53 +576,53 @@ function spawnMonster() {
             }, i * 700);
         }
     } else if (kind === "split") {
-        let hp = Math.floor(200 * Math.pow(1.02, wave - 1));
+        let hp = Math.floor(200 * Math.pow(1.025, wave - 1));
         for (let i = 0; i < 3; i++) {
             setTimeout(function () {
                 spawnOneMonster(hp, 1.2, "red", 12, "split");
             }, i * 600);
         }
     } else if (kind === "splitBig") {
-        let hp = Math.floor(500 * Math.pow(1.025, wave - 1));
+        let hp = Math.floor(500 * Math.pow(1.04, wave - 1));
         spawnOneMonster(hp, 1.2, "purple", 19, "splitBig");
 
     } else if (kind === "boss") {
-        let hp = Math.floor(500 * Math.pow(1.05, wave - 1));
+        let hp = Math.floor(500 * Math.pow(1.07, wave - 1));
         for (let i = 0; i < 2; i++) {
             setTimeout(function () {
                 spawnOneMonster(hp, 2.4, "purple", 15, "boss");
             }, i * 400);
         }
     } else if (kind === "normal") {
-        let hp = Math.floor(100 * Math.pow(1.035, wave - 1));
+        let hp = Math.floor(100 * Math.pow(1.03, wave - 1));
         for (let i = 0; i < 5; i++) {
             setTimeout(function () {
                 spawnOneMonster(hp, 2.4, "white", 11, "normal");
             }, i * 400);
         }
     } else if (kind === "thoiBu") {
-        let hp = Math.floor(1000 * Math.pow(1.06, wave - 1));
+        let hp = Math.floor(1000 * Math.pow(1.09, wave - 1));
         for (let i = 0; i < 2; i++) {
             setTimeout(function () {
                 spawnOneMonster(hp, 1.7, "purple", 16, "thoiBu");
             }, i * 550);
         }
     } else if (kind === "thoi") {
-        let hp = Math.floor(200 * Math.pow(1.04, wave - 1));
+        let hp = Math.floor(200 * Math.pow(1.045, wave - 1));
         for (let i = 0; i < 7; i++) {
             setTimeout(function () {
                 spawnOneMonster(hp, 1.7, "yellow", 11, "thoi");
             }, i * 500);
         }
     } else if (kind === "blue") {
-        let blueHp = Math.floor(400 * Math.pow(1.05, wave - 1));
+        let blueHp = Math.floor(400 * Math.pow(1.06, wave - 1));
         for (let i = 0; i < 2; i++) {
             setTimeout(function () {
                 spawnOneMonster(blueHp, 1, "green", 10, "blue");
             }, i * 700);
         }
     } else {
-        let hp = Math.floor(2000 * Math.pow(1.07, wave - 1));
+        let hp = Math.floor(2000 * Math.pow(1.12, wave - 1));
         spawnOneMonster(hp, 1, "purple", 15, "bigBlue");
     }
     wave++;
@@ -1283,10 +1283,13 @@ function moveBullets(){
             let affectedMonsters = [];
             if(bullet.type === "poison" || bullet.type === "ice"){
                 for(let other of monsters){
+                    if ( bullet.type === "poison" && (other.kind === "fly" || other.kind === "bigFly")) {
+                        continue;
+                    }
                     let dx2 = other.x - bullet.target.x;
                     let dy2 = other.y - bullet.target.y;
                     let dist2 = Math.sqrt(dx2 * dx2 + dy2 * dy2);
-                    if(dist2 < 80){
+                    if(dist2 < 100){
                         affectedMonsters.push(other);
                     }
                 }
@@ -1333,7 +1336,18 @@ function moveBullets(){
 
 function drawBullets(){
     for(let bullet of bullets){
-        ctx.fillStyle = "yellow";
+        if (bullet.type === "normal") {
+            ctx.fillStyle = "red";
+        } else if (bullet.type === "ice") {
+            ctx.fillStyle = "white";
+        } else if (bullet.type === "poison") {
+            ctx.fillStyle = "green";
+        } else if (bullet.type === "air") {
+            ctx.fillStyle = "blue";
+        } else {
+            ctx.fillStyle = "yellow";
+        }
+
         ctx.beginPath();
         ctx.arc(bullet.x, bullet.y, 5, 0, Math.PI * 2);
         ctx.fill();
