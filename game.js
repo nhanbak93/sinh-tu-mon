@@ -436,8 +436,11 @@ function resetAllMonstersToStart() {
 function damageAllMonsters() {
     for (let monster of monsters) {
         const percentDamage = monster.hp * 0.35;
-        const totalDamage = percentDamage + 2000;
+        const totalDamage = percentDamage + 5000;
         monster.hp -= totalDamage;
+        if (monster.hp <= monster.maxHp * 0.02) {
+            monster.hp = 0;
+        }
         if (monster.hp < 0){
             monster.hp = 0;
         }
@@ -546,12 +549,12 @@ function prepareNextMonsters() {
 function spawnMonster() {
     let kind = nextMonsters.shift();
     if (kind === "fly") {
-        let rate = 1.030 - Math.floor((wave - 1) / 100) * 0.010;
-        rate = Math.max(rate, 1.0020);
+        let rate = 1.045 - Math.floor((wave - 1) / 100) * 0.035;
+        rate = Math.max(rate, 1.0025);
         let growth = 1;
         for (let i = 1; i < wave; i++) {
-            let r = 1.030 - Math.floor((i - 1) / 100) * 0.010;
-            r = Math.max(r, 1.0020);
+            let r = 1.045 - Math.floor((i - 1) / 100) * 0.035;
+            r = Math.max(r, 1.0025);
             growth *= r;
         }
         let hp = Math.floor(80 * growth);
@@ -561,12 +564,12 @@ function spawnMonster() {
             }, i * 700);
         }
     } else if (kind === "bigFly") {
-        let rate = 1.035 - Math.floor((wave - 1) / 100) * 0.013;
-        rate = Math.max(rate, 1.0024);
+        let rate = 1.050 - Math.floor((wave - 1) / 100) * 0.041;
+        rate = Math.max(rate, 1.003);
         let growth = 1;
         for (let i = 1; i < wave; i++) {
-            let r = 1.035 - Math.floor((i - 1) / 100) * 0.013;
-            r = Math.max(r, 1.0024);
+            let r = 1.050 - Math.floor((i - 1) / 100) * 0.041;
+            r = Math.max(r, 1.003);
             growth *= r;
         }
         let hp = Math.floor(200 * growth);
@@ -583,11 +586,11 @@ function spawnMonster() {
             }, i * 600);
         }
     } else if (kind === "splitBig") {
-        let hp = Math.floor(500 * Math.pow(1.04, wave - 1));
+        let hp = Math.floor(500 * Math.pow(1.06, wave - 1));
         spawnOneMonster(hp, 1.2, "purple", 19, "splitBig");
 
     } else if (kind === "boss") {
-        let hp = Math.floor(500 * Math.pow(1.07, wave - 1));
+        let hp = Math.floor(500 * Math.pow(1.08, wave - 1));
         for (let i = 0; i < 2; i++) {
             setTimeout(function () {
                 spawnOneMonster(hp, 2.4, "purple", 15, "boss");
@@ -601,7 +604,7 @@ function spawnMonster() {
             }, i * 400);
         }
     } else if (kind === "thoiBu") {
-        let hp = Math.floor(1000 * Math.pow(1.09, wave - 1));
+        let hp = Math.floor(1000 * Math.pow(1.11, wave - 1));
         for (let i = 0; i < 2; i++) {
             setTimeout(function () {
                 spawnOneMonster(hp, 1.7, "purple", 16, "thoiBu");
@@ -622,7 +625,7 @@ function spawnMonster() {
             }, i * 700);
         }
     } else {
-        let hp = Math.floor(2000 * Math.pow(1.12, wave - 1));
+        let hp = Math.floor(2000 * Math.pow(1.16, wave - 1));
         spawnOneMonster(hp, 1, "purple", 15, "bigBlue");
     }
     wave++;
@@ -1184,11 +1187,12 @@ function drawTowerButtons(){
         ctx.lineWidth = 4;
         ctx.strokeRect(947, 567, 56, 56);
         ctx.fillStyle = "rgba(0,0,0,0.8)";
-        ctx.fillRect(1030, 565, 220, 80);
+        ctx.fillRect(1030, 565, 220, 110);
         ctx.fillStyle = "white";
         ctx.font = "18px Arial";
         ctx.fillText("Tất cả quái bị giảm 35%", 1045, 595);
-        ctx.fillText("máu và 2000 sát thương", 1045, 625);
+        ctx.fillText("máu và 5000 sát thương", 1045, 625);
+        ctx.fillText("kết liễu quái dưới 2%HP", 1045, 655);
         ctx.lineWidth = 1;
     }
 }
