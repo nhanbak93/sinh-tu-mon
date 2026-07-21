@@ -9,10 +9,86 @@ const START_X = 300;
 const START_Y = 50;
 const MAGIC_COOLDOWN = 100;
 const DAMAGE_MAGIC_COOLDOWN = 100;
+let magicCooldown = 0;
+let damageMagicCooldown = 0;
+let money = 50;
+let mauNha = 10;
+let wave = 1;
+let lastSpawn = Date.now();
+let gameOver = false;
+let towers = [];
+let selectedTower = "normal";
+let selectedTowerToDelete = null;
+let deleteButtonX = 0;
+let deleteButtonY = 0;
+let upgradeButtonX = 0;
+let upgradeButtonY = 0;
+let nextMonsters = [];
+let lastSpawnTime = Date.now();
+let spawnDelay = 6000;
+let lastMonsterType = null;
+let wakeLock = null;
+let audioCtx = null;
+let masterGain = null;
+let compressor = null;
+let soundEnabled = true;
+let grid = Array.from(
+    { length: GRID_SIZE },
+    () => Array(GRID_SIZE).fill(0)
+);
+let mapSelected = false;
+let currentMap = null;
+let rocks = [];
+const MAPS = {
+    classic: {
+        name: "MAP CỔ ĐIỂN",
+        rocks: []
+    },
+    rock: {
+        name: "MAP ĐÁ",
+        rocks: [
+            { row: 4, col: 0 }, { row: 4, col: 1 }, { row: 4, col: 2 }, { row: 4, col: 3 }, { row: 4, col: 4 },
+            { row: 4, col: 5 }, { row: 7, col: 4 }, { row: 7, col: 5 }, { row: 7, col: 6 }, { row: 7, col: 7 },
+            { row: 7, col: 8 }, { row: 7, col: 9 }, { row: 0, col: 9 }, { row: 0, col: 8 }, { row: 0, col: 7 },
+            { row: 1, col: 9 }, { row: 1, col: 8 }, { row: 1, col: 7 }
+        ]
+    }
+};
+
+function selectMap(mapName) {
+    currentMap = mapName;
+    mapSelected = true;
+    // Xoa toan bo vat can cu
+    grid = Array.from(
+        { length: GRID_SIZE },
+        () => Array(GRID_SIZE).fill(0)
+    );
+    // Lay danh sach da cua map da chon
+    rocks = MAPS[mapName].rocks.map(rock => ({
+        row: rock.row,
+        col: rock.col
+    }));
+    // Danh dau cac o da = 1
+    for (let rock of rocks) {
+        grid[rock.row][rock.col] = 1;
+    }
+    // Tinh duong di ban dau
+    const firstPath = findPath();
+    if (firstPath === null) {
+        console.error("Map nay khong co duong di!");
+        mapSelected = false;
+        currentMap = null;
+        rocks = [];
+        return;
+    }
+    // Bat dau dem thoi gian sinh quai tu luc chon map
+    lastSpawn = Date.now();
+    lastSpawnTime = Date.now();
+}
+
 function resizeGame() {
     const scaleX = window.innerWidth / GAME_WIDTH;
     const scaleY = window.innerHeight / GAME_HEIGHT;
-    // Lấy tỉ lệ nhỏ hơn để toàn bộ game nằm vừa màn hình
     const scale = Math.min(scaleX, scaleY);
     gameWrapper.style.transform = `scale(${scale})`;
 }
@@ -46,31 +122,202 @@ function drawGrid(){
     );
 }
 
-let magicCooldown = 0;
-let damageMagicCooldown = 0;
-let money = 50;
-let mauNha = 10;
-let wave = 1;
-let lastSpawn = Date.now();
-let gameOver = false;
-let grid = Array.from({length: GRID_SIZE}, () => Array(GRID_SIZE).fill(0));
-let towers = [];
-let selectedTower = "normal";
-let selectedTowerToDelete = null;
-let deleteButtonX = 0;
-let deleteButtonY = 0;
-let upgradeButtonX = 0;
-let upgradeButtonY = 0;
-let nextMonsters = [];
-let lastSpawnTime = Date.now();
-let spawnDelay = 6000;
-let lastMonsterType = null;
-let wakeLock = null;
+function drawRocks() {
+    for (let rock of rocks) {
+        const x = START_X + rock.col * CELL_SIZE;
+        const y = START_Y + rock.row * CELL_SIZE;
+        const centerX = x + CELL_SIZE / 2;
+        const centerY = y + CELL_SIZE / 2;
+        ctx.save();
+        ctx.fillStyle = "#292929";
+        ctx.fillRect(
+            x + 3,
+            y + 3,
+            CELL_SIZE - 6,
+            CELL_SIZE - 6
+        );
+        ctx.beginPath();
+        ctx.moveTo(centerX - 22, centerY + 13);
+        ctx.lineTo(centerX - 25, centerY - 5);
+        ctx.lineTo(centerX - 14, centerY - 21);
+        ctx.lineTo(centerX + 7, centerY - 24);
+        ctx.lineTo(centerX + 23, centerY - 10);
+        ctx.lineTo(centerX + 20, centerY + 14);
+        ctx.lineTo(centerX + 6, centerY + 23);
+        ctx.lineTo(centerX - 13, centerY + 21);
+        ctx.closePath();
+        ctx.fillStyle = "#777";
+        ctx.fill();
+        ctx.strokeStyle = "#222";
+        ctx.lineWidth = 3;
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(centerX - 14, centerY - 13);
+        ctx.lineTo(centerX + 5, centerY - 17);
+        ctx.lineTo(centerX + 14, centerY - 8);
+        ctx.lineTo(centerX - 7, centerY - 5);
+        ctx.closePath();
+        ctx.fillStyle = "#aaa";
+        ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(centerX + 2, centerY - 4);
+        ctx.lineTo(centerX - 3, centerY + 4);
+        ctx.lineTo(centerX + 3, centerY + 8);
+        ctx.lineTo(centerX - 2, centerY + 15);
+        ctx.strokeStyle = "#444";
+        ctx.lineWidth = 2;
+        ctx.stroke();
 
-let audioCtx = null;
-let masterGain = null;
-let compressor = null;
-let soundEnabled = true;
+        ctx.restore();
+    }
+}
+
+function drawMapSelection() {
+    ctx.save();
+    // Nen den
+    ctx.fillStyle = "#111";
+    ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+    // Tieu de
+    ctx.fillStyle = "white";
+    ctx.font = "bold 45px Arial";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(
+        "CHỌN BẢN ĐỒ",
+        GAME_WIDTH / 2,
+        120
+    );
+    const mapWidth = 330;
+    const mapHeight = 370;
+    const gap = 70;
+    const classicX =
+        GAME_WIDTH / 2 - mapWidth - gap / 2;
+    const rockX =
+        GAME_WIDTH / 2 + gap / 2;
+    const mapY = 210;
+    // =========================
+    // MAP CO DIEN
+    // =========================
+    ctx.fillStyle = "#222";
+    ctx.fillRect(
+        classicX,
+        mapY,
+        mapWidth,
+        mapHeight
+    );
+    ctx.strokeStyle = "#00ff88";
+    ctx.lineWidth = 5;
+    ctx.strokeRect(
+        classicX,
+        mapY,
+        mapWidth,
+        mapHeight
+    );
+    ctx.fillStyle = "#00ff88";
+    ctx.font = "bold 30px Arial";
+    ctx.fillText(
+        "MAP CỔ ĐIỂN",
+        classicX + mapWidth / 2,
+        mapY + 50
+    );
+    ctx.fillStyle = "white";
+    ctx.font = "22px Arial";
+    ctx.fillText(
+        "Không có đá",
+        classicX + mapWidth / 2,
+        mapY + 105
+    );
+    // Ve grid nho minh hoa
+    drawMapPreview(
+        classicX + 65,
+        mapY + 140,
+        false
+    );
+    // =========================
+    // MAP DA
+    // =========================
+    ctx.fillStyle = "#222";
+    ctx.fillRect(
+        rockX,
+        mapY,
+        mapWidth,
+        mapHeight
+    );
+    ctx.strokeStyle = "#ffaa00";
+    ctx.lineWidth = 5;
+    ctx.strokeRect(
+        rockX,
+        mapY,
+        mapWidth,
+        mapHeight
+    );
+    ctx.fillStyle = "#ffaa00";
+    ctx.font = "bold 30px Arial";
+    ctx.fillText(
+        "MAP ĐÁ",
+        rockX + mapWidth / 2,
+        mapY + 50
+    );
+    ctx.fillStyle = "white";
+    ctx.font = "22px Arial";
+    ctx.fillText(
+        "Có vật cản",
+        rockX + mapWidth / 2,
+        mapY + 105
+    );
+    drawMapPreview(
+        rockX + 65,
+        mapY + 140,
+        true
+    );
+    ctx.restore();
+}
+function drawMapPreview(x, y, hasRocks) {
+    const previewCell = 20;
+    const previewSize = 10;
+    ctx.save();
+    for (let row = 0; row < previewSize; row++) {
+        for (let col = 0; col < previewSize; col++) {
+            ctx.strokeStyle = "#666";
+            ctx.lineWidth = 1;
+            ctx.strokeRect(
+                x + col * previewCell,
+                y + row * previewCell,
+                previewCell,
+                previewCell
+            );
+        }
+    }
+    // O bat dau
+    ctx.fillStyle = "lime";
+    ctx.fillRect(
+        x,
+        y,
+        previewCell,
+        previewCell
+    );
+    // O ket thuc
+    ctx.fillStyle = "red";
+    ctx.fillRect(
+        x + 9 * previewCell,
+        y + 9 * previewCell,
+        previewCell,
+        previewCell
+    );
+    if (hasRocks) {
+        ctx.fillStyle = "#777";
+        for (let rock of MAPS.rock.rocks) {
+            ctx.fillRect(
+                x + rock.col * previewCell + 3,
+                y + rock.row * previewCell + 3,
+                previewCell - 6,
+                previewCell - 6
+            );
+        }
+    }
+    ctx.restore();
+}
+
 
 function getAudioContext() {
     if (!audioCtx) {
@@ -272,6 +519,38 @@ canvas.addEventListener("click", function(event){
     const rect = canvas.getBoundingClientRect();
     const mouseX = (event.clientX - rect.left) * (canvas.width / rect.width);
     const mouseY = (event.clientY - rect.top) * (canvas.height / rect.height);
+    if (!mapSelected) {
+        const mapWidth = 330;
+        const mapHeight = 260;
+        const gap = 70;
+        const classicX =
+            GAME_WIDTH / 2 - mapWidth - gap / 2;
+        const rockX =
+            GAME_WIDTH / 2 + gap / 2;
+        const mapY = 210;
+        // Bam map co dien
+        if (
+            mouseX >= classicX &&
+            mouseX <= classicX + mapWidth &&
+            mouseY >= mapY &&
+            mouseY <= mapY + mapHeight
+        ) {
+            selectMap("classic");
+            return;
+        }
+        // Bam map da
+        if (
+            mouseX >= rockX &&
+            mouseX <= rockX + mapWidth &&
+            mouseY >= mapY &&
+            mouseY <= mapY + mapHeight
+        ) {
+            selectMap("rock");
+            return;
+        }
+        // Bam ngoai 2 map thi khong lam gi
+        return;
+    }
     // Bấm nút xoá và nâng cấp
     if(selectedTowerToDelete){
         if(
@@ -586,7 +865,7 @@ function spawnMonster() {
             }, i * 600);
         }
     } else if (kind === "splitBig") {
-        let hp = Math.floor(500 * Math.pow(1.06, wave - 1));
+        let hp = Math.floor(500 * Math.pow(1.07, wave - 1));
         spawnOneMonster(hp, 1.2, "purple", 19, "splitBig");
 
     } else if (kind === "boss") {
@@ -1363,6 +1642,14 @@ function gameLoop(currentTime) {
     let deltaTime = (currentTime - lastFrameTime) / 16.6667;
     lastFrameTime = currentTime;
     deltaTime = Math.min(deltaTime, 2);
+
+    ctx.fillStyle = "rgb(30,30,30)";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    if (!mapSelected) {
+        drawMapSelection();
+        requestAnimationFrame(gameLoop);
+        return;
+    }
     // thời gian Hồi Phép
     if (magicCooldown > 0) {
         magicCooldown -= deltaTime / 60;
@@ -1376,8 +1663,6 @@ function gameLoop(currentTime) {
             damageMagicCooldown = 0;
         }
     }
-    ctx.fillStyle = "rgb(30,30,30)";
-    ctx.fillRect(0,0,canvas.width,canvas.height);
     if(!gameOver && Date.now() - lastSpawn >= spawnDelay){
         spawnMonster();
         lastSpawn += spawnDelay;
@@ -1388,6 +1673,7 @@ function gameLoop(currentTime) {
     let timeLeft = Math.ceil((spawnDelay - (Date.now() - lastSpawn)) / 1000);
     if (timeLeft < 0) timeLeft = 0;
     drawGrid();
+    drawRocks();
     drawTowers();
     drawTowerButtons();
     drawNextMonsters(timeLeft);
