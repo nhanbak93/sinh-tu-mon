@@ -844,11 +844,11 @@ function spawnMonster() {
         }
     } else if (kind === "bigFly") {
         let rate = 1.05 - Math.floor((wave - 1) / 100) * 0.04;
-        rate = Math.max(rate, 1.004);
+        rate = Math.max(rate, 1.0035);
         let growth = 1;
         for (let i = 1; i < wave; i++) {
-            let r = 1.05 - Math.floor((i - 1) / 100) * 0.03;
-            r = Math.max(r, 1.004);
+            let r = 1.05 - Math.floor((i - 1) / 100) * 0.04;
+            r = Math.max(r, 1.0035);
             growth *= r;
         }
         let hp = Math.floor(200 * growth);
