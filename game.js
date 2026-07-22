@@ -843,12 +843,12 @@ function spawnMonster() {
             }, i * 700);
         }
     } else if (kind === "bigFly") {
-        let rate = 1.050 - Math.floor((wave - 1) / 100) * 0.041;
-        rate = Math.max(rate, 1.003);
+        let rate = 1.05 - Math.floor((wave - 1) / 100) * 0.04;
+        rate = Math.max(rate, 1.004);
         let growth = 1;
         for (let i = 1; i < wave; i++) {
-            let r = 1.050 - Math.floor((i - 1) / 100) * 0.041;
-            r = Math.max(r, 1.003);
+            let r = 1.05 - Math.floor((i - 1) / 100) * 0.03;
+            r = Math.max(r, 1.004);
             growth *= r;
         }
         let hp = Math.floor(200 * growth);
@@ -865,25 +865,25 @@ function spawnMonster() {
             }, i * 600);
         }
     } else if (kind === "splitBig") {
-        let hp = Math.floor(500 * Math.pow(1.07, wave - 1));
+        let hp = Math.floor(800 * Math.pow(1.08, wave - 1));
         spawnOneMonster(hp, 1.2, "purple", 19, "splitBig");
 
     } else if (kind === "boss") {
-        let hp = Math.floor(500 * Math.pow(1.08, wave - 1));
+        let hp = Math.floor(800 * Math.pow(1.09, wave - 1));
         for (let i = 0; i < 2; i++) {
             setTimeout(function () {
                 spawnOneMonster(hp, 2.4, "purple", 15, "boss");
             }, i * 400);
         }
     } else if (kind === "normal") {
-        let hp = Math.floor(100 * Math.pow(1.03, wave - 1));
+        let hp = Math.floor(150 * Math.pow(1.03, wave - 1));
         for (let i = 0; i < 5; i++) {
             setTimeout(function () {
                 spawnOneMonster(hp, 2.4, "white", 11, "normal");
             }, i * 400);
         }
     } else if (kind === "thoiBu") {
-        let hp = Math.floor(1000 * Math.pow(1.11, wave - 1));
+        let hp = Math.floor(1000 * Math.pow(1.135, wave - 1));
         for (let i = 0; i < 2; i++) {
             setTimeout(function () {
                 spawnOneMonster(hp, 1.7, "purple", 16, "thoiBu");
@@ -904,7 +904,7 @@ function spawnMonster() {
             }, i * 700);
         }
     } else {
-        let hp = Math.floor(2000 * Math.pow(1.16, wave - 1));
+        let hp = Math.floor(2000 * Math.pow(1.18, wave - 1));
         spawnOneMonster(hp, 1, "purple", 15, "bigBlue");
     }
     wave++;
