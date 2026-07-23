@@ -9,6 +9,24 @@ const START_X = 300;
 const START_Y = 50;
 const MAGIC_COOLDOWN = 100;
 const DAMAGE_MAGIC_COOLDOWN = 100;
+
+const amthanhphepset = new
+Audio("amthanh/pheptiaset.mp3");
+amthanhphepset.volume = 0.2;
+const amthanhnangcap = new
+Audio("amthanh/nangcap.mp3");
+amthanhnangcap.volume = 0.5;
+const amthanhbanthap = new
+Audio("amthanh/banthap.mp3");
+amthanhbanthap.volume = 0.7;
+const amthanhhettien = new
+Audio("amthanh/hettien.mp3");
+amthanhhettien.volume = 0.2;
+const amthanhnhacnen = new
+Audio("amthanh/nhacnen.mp3");
+amthanhnhacnen.loop = true;
+amthanhnhacnen.volume = 0.2;
+
 let magicCooldown = 0;
 let damageMagicCooldown = 0;
 let money = 50;
@@ -341,8 +359,7 @@ function getAudioContext() {
     }
     return audioCtx;
 }
-
-// đạn bắn
+// tieng dan ban
 let shootSoundCount = 0;
 const MAX_SHOOT_SOUND = 3;
 function playShootSound() {
@@ -447,7 +464,7 @@ function playPlaceTowerSound() {
     heavyHit(ctx.currentTime + 0.10);
 }
 
-// phép quái về star
+// tieng phep quai ve star
 function playSpellSound() {
     if (!soundEnabled) return;
 
@@ -477,18 +494,85 @@ function playSpellSound() {
         osc.start(time);
         osc.stop(time + 0.28);
     }
-
-    // Chéo thứ nhất
+    // tieng cheo 1
     magicSweep(start, 280, 1100, 0.07);
-
-    // Chéo thứ hai
+    // tieng cheo 2
     magicSweep(start + 0.13, 360, 1450, 0.065);
-
-    // Tiếng vọng 1
+    // Tieng vong 1
     magicSweep(start + 0.32, 420, 1050, 0.025);
-
-    // Tiếng vọng 2 nhỏ hơn
+    // Tieng vong 2
     magicSweep(start + 0.48, 500, 1250, 0.012);
+}
+
+// Tiếng tia sét
+function playLightningSound() {
+    if (!soundEnabled) return;
+    const ctx = getAudioContext();
+    const start = ctx.currentTime;
+    // Tạo tiếng nhiễu điện
+    function createNoise(time, duration, volume) {
+        const bufferSize = Math.floor(ctx.sampleRate * duration);
+        const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+            data[i] = Math.random() * 2 - 1;
+        }
+        const noise = ctx.createBufferSource();
+        const filter = ctx.createBiquadFilter();
+        const gain = ctx.createGain();
+        noise.buffer = buffer;
+        filter.type = "bandpass";
+        filter.frequency.setValueAtTime(1800, time);
+        filter.frequency.exponentialRampToValueAtTime(
+            350,
+            time + duration
+        );
+        filter.Q.value = 0.8;
+        gain.gain.setValueAtTime(0.001, time);
+        gain.gain.exponentialRampToValueAtTime(volume, time + 0.005);
+        gain.gain.exponentialRampToValueAtTime(
+            0.001,
+            time + duration
+        );
+        noise.connect(filter);
+        filter.connect(gain);
+        gain.connect(masterGain);
+
+        noise.start(time);
+        noise.stop(time + duration);
+    }
+    // Tạo tiếng nổ trầm
+    function thunderBoom(time, frequency, duration, volume) {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "sawtooth";
+        osc.frequency.setValueAtTime(frequency, time);
+        osc.frequency.exponentialRampToValueAtTime(
+            35,
+            time + duration
+        );
+        gain.gain.setValueAtTime(0.001, time);
+        gain.gain.exponentialRampToValueAtTime(
+            volume,
+            time + 0.01
+        );
+        gain.gain.exponentialRampToValueAtTime(
+            0.001,
+            time + duration
+        );
+        osc.connect(gain);
+        gain.connect(masterGain);
+        osc.start(time);
+        osc.stop(time + duration);
+    }
+    // Tia điện đầu tiên
+    createNoise(start, 0.12, 0.22);
+    // Tia điện thứ hai
+    createNoise(start + 0.06, 0.18, 0.16);
+    // Tiếng nổ trầm
+    thunderBoom(start + 0.02, 140, 0.45, 0.18);
+    // Tia điện vang phía sau
+    createNoise(start + 0.22, 0.28, 0.07);
 }
 
 async function keepScreenOn() {
@@ -521,7 +605,7 @@ canvas.addEventListener("click", function(event){
     const mouseY = (event.clientY - rect.top) * (canvas.height / rect.height);
     if (!mapSelected) {
         const mapWidth = 330;
-        const mapHeight = 260;
+        const mapHeight = 370;
         const gap = 70;
         const classicX =
             GAME_WIDTH / 2 - mapWidth - gap / 2;
@@ -564,6 +648,8 @@ canvas.addEventListener("click", function(event){
                 refund += (i * 20) / 2;
             }
             money += refund;
+            amthanhbanthap.currentTime = 0;
+            amthanhbanthap.play();
             grid[selectedTowerToDelete.row][selectedTowerToDelete.col] = 0;
             let index = towers.indexOf(selectedTowerToDelete);
             if(index !== -1){
@@ -598,6 +684,11 @@ canvas.addEventListener("click", function(event){
             if(money >= cost){
                 money -= cost;
                 tower.level++;
+                amthanhnangcap.currentTime = 0;
+                amthanhnangcap.play();
+            } else {
+                amthanhhettien.currentTime = 0;
+                amthanhhettien.play();
             }
             return;
         }
@@ -663,6 +754,8 @@ canvas.addEventListener("click", function(event){
         if (damageMagicCooldown <= 0) {
             damageAllMonsters();
             damageMagicCooldown = DAMAGE_MAGIC_COOLDOWN;
+            amthanhphepset.currentTime = 0;
+            amthanhphepset.play();
         }
         return;
     }
@@ -1673,6 +1766,7 @@ function gameLoop(currentTime) {
     let timeLeft = Math.ceil((spawnDelay - (Date.now() - lastSpawn)) / 1000);
     if (timeLeft < 0) timeLeft = 0;
     drawGrid();
+    amthanhnhacnen.play();
     drawRocks();
     drawTowers();
     drawTowerButtons();
