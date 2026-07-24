@@ -33,6 +33,13 @@ let money = 50;
 let mauNha = 10;
 let wave = 1;
 let lastSpawn = Date.now();
+let hiddenStartTime = null;
+let simulatedTime = null;
+let isSimulating = false;
+let pendingSpawns = [];
+function gameNow() {
+    return simulatedTime !== null ? simulatedTime : Date.now();
+}
 let gameOver = false;
 let towers = [];
 let selectedTower = "normal";
@@ -42,7 +49,7 @@ let deleteButtonY = 0;
 let upgradeButtonX = 0;
 let upgradeButtonY = 0;
 let nextMonsters = [];
-let lastSpawnTime = Date.now();
+let lastSpawnTime = lastSpawn;
 let spawnDelay = 6000;
 let lastMonsterType = null;
 let wakeLock = null;
@@ -918,6 +925,33 @@ function prepareNextMonsters() {
     }
 }
 
+function queueMonster(delay, hp, speed, color, size, kind) {
+    pendingSpawns.push({
+        spawnAt: gameNow() + delay,
+        hp: hp,
+        speed: speed,
+        color: color,
+        size: size,
+        kind: kind
+    });
+}
+
+function processPendingSpawns() {
+    for (let i = pendingSpawns.length - 1; i >= 0; i--) {
+        let item = pendingSpawns[i];
+        if (gameNow() >= item.spawnAt) {
+            spawnOneMonster(
+                item.hp,
+                item.speed,
+                item.color,
+                item.size,
+                item.kind
+            );
+            pendingSpawns.splice(i, 1);
+        }
+    }
+}
+
 function spawnMonster() {
     let kind = nextMonsters.shift();
     if (kind === "fly") {
@@ -931,9 +965,7 @@ function spawnMonster() {
         }
         let hp = Math.floor(80 * growth);
         for (let i = 0; i < 5; i++) {
-            setTimeout(function () {
-                spawnOneMonster(hp, 1.5, "blue", 16, "fly");
-            }, i * 700);
+            queueMonster(i * 700, hp, 1.5, "blue", 16, "fly");
         }
     } else if (kind === "bigFly") {
         let rate = 1.05 - Math.floor((wave - 1) / 100) * 0.035;
@@ -946,59 +978,45 @@ function spawnMonster() {
         }
         let hp = Math.floor(200 * growth);
         for (let i = 0; i < 2; i++) {
-            setTimeout(function () {
-                spawnOneMonster(hp, 1.5, "purple", 24, "bigFly");
-            }, i * 700);
+            queueMonster(i * 700, hp, 1.65, "purple", 24, "bigFly");
         }
     } else if (kind === "split") {
         let hp = Math.floor(200 * Math.pow(1.025, wave - 1));
         for (let i = 0; i < 3; i++) {
-            setTimeout(function () {
-                spawnOneMonster(hp, 1.2, "red", 12, "split");
-            }, i * 600);
+            queueMonster(i * 600, hp, 1.2, "red", 12, "split");
         }
     } else if (kind === "splitBig") {
         let hp = Math.floor(800 * Math.pow(1.08, wave - 1));
-        spawnOneMonster(hp, 1.2, "purple", 19, "splitBig");
+        spawnOneMonster(hp, 1.35, "purple", 19, "splitBig");
 
     } else if (kind === "boss") {
         let hp = Math.floor(800 * Math.pow(1.09, wave - 1));
         for (let i = 0; i < 2; i++) {
-            setTimeout(function () {
-                spawnOneMonster(hp, 2.4, "purple", 15, "boss");
-            }, i * 400);
+            queueMonster(i * 400, hp, 2.65, "purple", 15, "boss");
         }
     } else if (kind === "normal") {
         let hp = Math.floor(150 * Math.pow(1.03, wave - 1));
         for (let i = 0; i < 5; i++) {
-            setTimeout(function () {
-                spawnOneMonster(hp, 2.4, "white", 11, "normal");
-            }, i * 400);
+            queueMonster(i * 400, hp, 2.4, "white", 11, "normal");
         }
     } else if (kind === "thoiBu") {
         let hp = Math.floor(1000 * Math.pow(1.135, wave - 1));
         for (let i = 0; i < 2; i++) {
-            setTimeout(function () {
-                spawnOneMonster(hp, 1.7, "purple", 16, "thoiBu");
-            }, i * 550);
+            queueMonster(i * 550, hp, 1.9, "purple", 16, "thoiBu");
         }
     } else if (kind === "thoi") {
         let hp = Math.floor(200 * Math.pow(1.045, wave - 1));
         for (let i = 0; i < 7; i++) {
-            setTimeout(function () {
-                spawnOneMonster(hp, 1.7, "yellow", 11, "thoi");
-            }, i * 500);
+            queueMonster(i * 500, hp, 1.7, "yellow", 11, "thoi");
         }
     } else if (kind === "blue") {
         let blueHp = Math.floor(400 * Math.pow(1.06, wave - 1));
         for (let i = 0; i < 2; i++) {
-            setTimeout(function () {
-                spawnOneMonster(blueHp, 1, "green", 10, "blue");
-            }, i * 700);
+            queueMonster(i * 700, blueHp, 1, "green", 10, "blue");
         }
     } else {
         let hp = Math.floor(2000 * Math.pow(1.18, wave - 1));
-        spawnOneMonster(hp, 1, "purple", 15, "bigBlue");
+        spawnOneMonster(hp, 1.2, "purple", 15, "bigBlue");
     }
     wave++;
     nextMonsters.push(getMonsterTypeForWave(wave + 4));
@@ -1227,7 +1245,7 @@ function moveMonsters(deltaTime) {
             let dy = endY - monster.y;
             let distance = Math.sqrt(dx * dx + dy * dy);
             let moveSpeed = monster.speed * deltaTime;
-            if (distance < monster.speed) {
+            if (distance <= moveSpeed) {
                 monsters.splice(i, 1);
                 mauNha -= 1;
                 if (mauNha <= 0) {
@@ -1240,7 +1258,7 @@ function moveMonsters(deltaTime) {
             monster.y += dy / distance * moveSpeed;
             continue;
         }
-        if (monster.slowUntil > Date.now()) {
+        if (monster.slowUntil > gameNow()) {
         } else {
             monster.speed = monster.normalSpeed;
         }
@@ -1571,7 +1589,7 @@ function drawTowerButtons(){
 
 let bullets = [];
 function towerShoot(){
-    let now = Date.now();
+    let now = gameNow();
     for(let tower of towers){
         if(tower.type === "energy"){
             continue;
@@ -1637,7 +1655,9 @@ function towerShoot(){
                     type: tower.type,
                     level: tower.level
                 });
-                playShootSound();
+                if (!isSimulating) {
+                    playShootSound();
+                }
                 tower.lastShot = now;
                     break;
             }
@@ -1645,7 +1665,7 @@ function towerShoot(){
     }
 }
 
-function moveBullets(){
+function moveBullets(deltaTime = 1) {
     for(let i = bullets.length - 1; i >= 0; i--){
         let bullet = bullets[i];
         if(!monsters.includes(bullet.target)){
@@ -1655,7 +1675,8 @@ function moveBullets(){
         let dx = bullet.target.x - bullet.x;
         let dy = bullet.target.y - bullet.y;
         let dist = Math.sqrt(dx * dx + dy * dy);
-        if(dist < bullet.speed){
+        let bulletMove = bullet.speed * deltaTime;
+        if(dist < bulletMove){
             let affectedMonsters = [];
             if(bullet.type === "poison" || bullet.type === "ice"){
                 for(let other of monsters){
@@ -1681,13 +1702,15 @@ function moveBullets(){
                 if(bullet.type === "ice"){
                     let slowRate = Math.max(0.5, 0.8 - (bullet.level - 1) * 0.06);
                     m.speed = m.normalSpeed * slowRate;
-                    m.slowUntil = Date.now() + 2000;
+                    m.slowUntil = gameNow() + 2000;
                 }
             }
             bullets.splice(i, 1);
             for(let j = monsters.length - 1; j >= 0; j--){
                 if(monsters[j].hp <= 0){
-                    playMonsterDieSound();
+                    if (!isSimulating) {
+                        playMonsterDieSound();
+                    }
                     if (monsters[j].kind === "split" || monsters[j].kind === "splitBig"){
                         splitMonster(monsters[j]);
                     }
@@ -1704,8 +1727,8 @@ function moveBullets(){
                 }
             }
         }else{
-            bullet.x += dx / dist * bullet.speed;
-            bullet.y += dy / dist * bullet.speed;
+            bullet.x += dx / dist * bulletMove;
+            bullet.y += dy / dist * bulletMove;
         }
     }
 }
@@ -1756,13 +1779,16 @@ function gameLoop(currentTime) {
             damageMagicCooldown = 0;
         }
     }
-    if(!gameOver && Date.now() - lastSpawn >= spawnDelay){
+    while (!gameOver && gameNow() - lastSpawn >= spawnDelay) {
         spawnMonster();
         lastSpawn += spawnDelay;
     }
+    processPendingSpawns();
     moveMonsters(deltaTime);
-    towerShoot();
-    moveBullets();
+    if (!gameOver) {
+        towerShoot();
+        moveBullets(deltaTime);
+    }
     let timeLeft = Math.ceil((spawnDelay - (Date.now() - lastSpawn)) / 1000);
     if (timeLeft < 0) timeLeft = 0;
     drawGrid();
@@ -1964,17 +1990,60 @@ document.addEventListener("pointerdown", () => {
         keepScreenOn();
     }
 });
+function simulateHiddenTime(hiddenMilliseconds) {
+    const STEP_MS = 100;
+    let remaining = hiddenMilliseconds;
+    isSimulating = true;
+    let oldSoundEnabled = soundEnabled;
+    soundEnabled = false;
+    simulatedTime = hiddenStartTime;
+    while (remaining > 0 && !gameOver) {
+        let stepMs = Math.min(STEP_MS, remaining);
+        let deltaTime = stepMs / 16.6667;
+        simulatedTime += stepMs;
+        while (!gameOver && gameNow() - lastSpawn >= spawnDelay) {
+            spawnMonster();
+            lastSpawn += spawnDelay;
+        }
+        processPendingSpawns();
+        moveMonsters(deltaTime);
+        if (!gameOver) {
+            towerShoot();
+            moveBullets(deltaTime);
+        }
+        if (mauNha <= 0) {
+            mauNha = 0;
+            gameOver = true;
+            releaseScreenLock();
+            break;
+        }
+        remaining -= stepMs;
+    }
+    simulatedTime = null;
+    soundEnabled = oldSoundEnabled;
+    isSimulating = false;
+}
 document.addEventListener("visibilitychange", () => {
-    if (document.hidden && ! gameOver) {
-        gameOver = true;
-        releaseScreenLock();
+    if (document.hidden) {
+        if (!gameOver && mapSelected) {
+            hiddenStartTime = Date.now();
+        }
         return;
     }
-    if (document.visibilityState === "visible") {
+    if (
+        document.visibilityState === "visible" &&
+        hiddenStartTime !== null &&
+        !gameOver
+    ) {
+        let hiddenDuration = Date.now() - hiddenStartTime;
+        if (hiddenDuration > 120000) {
+            gameOver = true;
+            releaseScreenLock();
+        } else {
+            simulateHiddenTime(hiddenDuration);
+        }
+        hiddenStartTime = null;
         lastFrameTime = performance.now();
-        lastSpawnTime = Date.now();
-        
-requestAnimationFrame(gameLoop);
     }
 });
 
